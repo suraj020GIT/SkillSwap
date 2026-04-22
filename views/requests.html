@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Requests</title>
+
+    <style>
+    body {
+        font-family: Arial;
+        background: #f4f6f8;
+    }
+
+    .navbar {
+        background: #333;
+        padding: 10px;
+    }
+
+    .navbar a {
+        color: white;
+        margin-right: 15px;
+        text-decoration: none;
+    }
+
+    .card {
+        background: white;
+        padding: 15px;
+        margin: 10px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    button {
+        padding: 6px 10px;
+        margin-right: 5px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .accepted { color: green; font-weight: bold; }
+    .rejected { color: red; font-weight: bold; }
+    .pending { color: orange; font-weight: bold; }
+    </style>
+
+</head>
+
+<body>
+
+<div class="navbar">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/requests-page">My Requests</a>
+    <a href="/logout">Logout</a>
+</div>
+
+<h1>My Requests 📩</h1>
+
+<!-- 🔥 IMPORTANT -->
+<div id="requestList"></div>
+
+<script>
+
+async function loadRequests() {
+    const res = await fetch("/my-requests");
+    const data = await res.json();
+
+    let list = "";
+
+    if(data.length === 0){
+        list = "<p>No requests yet 😢</p>";
+    }
+
+    data.forEach(r => {
+        list += `
+        <div class="card">
+            <p><b>From:</b> ${r.fromUser}</p>
+            <p><b>Skill Offered:</b> ${r.skillOffered}</p>
+            <p><b>Wants:</b> ${r.skillWanted}</p>
+
+            <p>
+                <b>Status:</b> 
+                <span class="${r.status}">
+                    ${r.status}
+                </span>
+            </p>
+
+            <button onclick="updateStatus('${r._id}', 'accepted')">Accept</button>
+            <button onclick="updateStatus('${r._id}', 'rejected')">Reject</button>
+        </div>
+        `;
+    });
+
+    document.getElementById("requestList").innerHTML = list;
+}
+
+async function updateStatus(id, status) {
+    const res = await fetch("/update-request", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ id, status })
+    });
+
+    const msg = await res.text();
+    alert(msg);
+
+    loadRequests(); // refresh
+}
+
+// load on page open
+loadRequests();
+
+</script>
+
+</body>
+</html>

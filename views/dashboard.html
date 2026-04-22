@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+
+    <style>
+    body {
+        font-family: Arial;
+        background: #f4f6f8;
+        padding: 20px;
+    }
+
+    .navbar {
+        background: #333;
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+
+    .navbar a {
+        color: white;
+        margin-right: 15px;
+        text-decoration: none;
+    }
+
+    .card {
+        background: white;
+        padding: 15px;
+        margin: 10px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    button {
+        padding: 8px 12px;
+        border: none;
+        background: #007bff;
+        color: white;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #0056b3;
+    }
+
+    button:disabled {
+        background: gray;
+        cursor: not-allowed;
+    }
+    </style>
+
+</head>
+
+<body>
+
+<!--  NAVBAR -->
+<div class="navbar">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/requests-page">My Requests </a>
+    <a href="/logout">Logout</a>
+</div>
+
+<h1>Skill Swap Dashboard </h1>
+
+<input type="text" id="search" placeholder="Search skill...">
+<button onclick="searchUser()">Search</button>
+
+<div id="userList"></div>
+
+<script>
+
+let currentUserEmail = "";
+
+// get logged in user
+async function getCurrentUser() {
+    const res = await fetch("/me");
+    const user = await res.json();
+
+    if(user){
+        currentUserEmail = user.email;
+    }
+}
+
+//  load users
+async function loadUsers() {
+    const userRes = await fetch("/users");
+    const users = await userRes.json();
+
+    const reqRes = await fetch("/my-sent-requests");
+    const requests = await reqRes.json();
+
+    let list = "";
+
+    users.forEach(u => {
+
+        // ❌ hide current user
+        if(u.email === currentUserEmail) return;
+
+        const req = requests.find(r => r.toUser === u.email);
+
+        let statusHTML = "";
+        let buttonHTML = "";
+
+        if (req) {
+            let color = req.status === "accepted" ? "green" :
+                        req.status === "rejected" ? "red" : "orange";
+
+            statusHTML = `<p>Status: <span style="color:${color}">${req.status}</span></p>`;
+            buttonHTML = `<button disabled>Requested</button>`;
+        } else {
+            buttonHTML = `
+            <button onclick="sendRequest('${u.email}', '${u.skill}', '${u.wantSkill}')">
+                Send Request
+            </button>`;
+        }
+
+        list += `
+        <div class="card">
+            <h3>${u.name}</h3>
+            <p><b>Skill:</b> ${u.skill}</p>
+            <p><b>Wants:</b> ${u.wantSkill}</p>
+            ${statusHTML}
+            ${buttonHTML}
+        </div>
+        `;
+    });
+
+    document.getElementById("userList").innerHTML = list;
+}
+
+//  search
+async function searchUser() {
+    const value = document.getElementById("search").value.toLowerCase();
+
+    const res = await fetch("/users");
+    const data = await res.json();
+
+    let list = "";
+    data.forEach(u => {
+        if (
+            u.email !== currentUserEmail &&
+            u.skill &&
+            u.skill.toLowerCase().includes(value)
+        ) {
+            list += `
+            <div class="card">
+                <h3>${u.name}</h3>
+                <p><b>Skill:</b> ${u.skill}</p>
+                <button onclick="sendRequest('${u.email}', '${u.skill}', '${u.wantSkill}')">
+                    Send Request
+                </button>
+            </div>
+            `;
+        }
+    });
+
+    document.getElementById("userList").innerHTML = list;
+}
+
+//  send request
+async function sendRequest(email, skill, wantSkill) {
+    const res = await fetch("/send-request", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            toUser: email,
+            skillOffered: skill,
+            skillWanted: wantSkill
+        })
+    });
+
+    const msg = await res.text();
+    alert(msg);
+
+    loadUsers();
+}
+
+//  init
+async function init(){
+    await getCurrentUser();
+    loadUsers();
+}
+
+init();
+
+</script>
+
+</body>
+</html>
